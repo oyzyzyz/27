@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>くるくる抽選機</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: #f0f0f0;
+    }
+    .container {
+      position: relative;
+      width: 700px;
+      height: 500px;
+      background-color: #fff;
+      border: 2px solid #333;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    canvas {
+      background-color: #f5f5f5;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .label {
+      font-size: 24px;
+      font-weight: bold;
+      color: #333;
+    }
+    .buttons {
+      position: absolute;
+      bottom: 20px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      cursor: pointer;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    button:disabled {
+      background-color: #ccc;
+    }
+    input {
+      padding: 5px;
+      font-size: 16px;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <canvas id="rouletteCanvas" width="450" height="450"></canvas>
+    
+    <div class="label">◀</div>
+  </div>
+
+  <div class="buttons">
+    <button id="startButton">回す</button>
+    <button id="addSectionButton">セクション追加</button>
+    <input type="text" id="sectionLabel" placeholder="セクション名" />
+    <input type="color" id="sectionColor" value="#ff5733" />
+  </div>
+
+  <script>
+    const canvas = document.getElementById("rouletteCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let sections = [
+      { label: "1", color: "#ff5733" },
+      { label: "2", color: "#33c1ff" },
+      { label: "3", color: "#ffb833" },
+    ];
+
+    let rotation = 0; 
+    let spinning = false; 
+    let spinTimeout; 
+    let spinSpeed = 0; 
+    let deceleration = 0.05; 
+    let stopTimeout; 
+
+    function drawWheel() {
+      const sectionAngle = (2 * Math.PI) / sections.length; 
+      sections.forEach((section, i) => {
+        const startAngle = i * sectionAngle + rotation;
+        const endAngle = (i + 1) * sectionAngle + rotation;
+
+        ctx.beginPath();
+        ctx.arc(225, 225, 225, startAngle, endAngle);
+        ctx.lineTo(225, 225);
+        ctx.fillStyle = section.color;
+        ctx.fill();
+        ctx.stroke();
+
+        const midAngle = (startAngle + endAngle) / 2;
+        const labelX = 225 + Math.cos(midAngle) * 180;
+        const labelY = 225 + Math.sin(midAngle) * 180;
+        ctx.fillStyle = "#fff";
+        ctx.font = "20px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(section.label, labelX, labelY);
+      });
+    }
+    
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawWheel();
+    }
+    
+    document.getElementById("startButton").addEventListener("click", () => {
+      if (!spinning) {
+        spinning = true;
+        document.getElementById("startButton").disabled = true;
+        
+        spinSpeed = 10;
+        let startTime = null;
+
+        function spin(timestamp) {
+          if (!startTime) startTime = timestamp;
+          const progress = timestamp - startTime;
+          
+          rotation = (progress / 10) + rotation;
+          draw();
+
+          if (spinning) {
+            spinTimeout = requestAnimationFrame(spin);
+          }
+        }
+
+        spinTimeout = requestAnimationFrame(spin);
+
+        stopTimeout = setTimeout(() => {
+          spinning = false;
+          let speed = spinSpeed;
+          let stopAnimation = () => {
+            if (speed > 0) {
+              speed -= deceleration;
+              rotation += speed;
+              draw();
+              spinTimeout = requestAnimationFrame(stopAnimation);
+            } else {
+              cancelAnimationFrame(spinTimeout);
+              document.getElementById("startButton").disabled = false;
+              draw();
+            }
+          };
+
+          stopAnimation(); 
+        }, 3000); 
+      }
+    });
+
+    document.getElementById("addSectionButton").addEventListener("click", () => {
+      const label = document.getElementById("sectionLabel").value;
+      const color = document.getElementById("sectionColor").value;
+
+      if (label && color) {
+        sections.push({ label, color });
+        
+        draw();
+
+        document.getElementById("sectionLabel").value = "";
+      } else {
+        alert("セクション名と色を入力してください！");
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === " " || event.key === "Spacebar") {
+        event.preventDefault();
+        document.getElementById("startButton").click();
+      }
+    });
+
+    draw();
+  </script>
+
+</body>
+</html>
